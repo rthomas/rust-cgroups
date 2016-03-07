@@ -13,23 +13,20 @@ extern "C" {
     fn cgroup_init() -> i32;
     fn cgroup_new_cgroup(s: *const c_char) -> *mut CGroup;
     fn cgroup_add_controller(cgroup: *mut CGroup, name: *const c_char) -> *mut CGroupController;
+    fn cgroup_get_controller(cgroup: *mut CGroup, name: *const c_char) -> *mut CGroupController;
     fn cgroup_create_cgroup(cgroup: *mut CGroup, ignore_ownership: i32) -> i32;
     fn cgroup_get_cgroup(cgroup: *mut CGroup) -> i32;
 }
 
+#[derive(Debug)]
 pub struct Controller {
     controller: *mut CGroupController,
 }
 
+#[derive(Debug)]
 pub struct Group<'a> {
     name: &'a str,
     cgroup: *mut CGroup,
-}
-
-impl<'a> fmt::Debug for Group<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Group {{ name: {} }}", self.name)
-    }
 }
 
 impl<'a> Group<'a> {
@@ -62,6 +59,13 @@ impl<'a> Group<'a> {
         Controller { controller: controller }
     }
 
+    pub fn get_controller(&mut self, name: &'a str) -> Controller {
+        let controller = unsafe {
+            cgroup_get_controller(self.cgroup, CString::new(name).unwrap().into_raw())
+        };
+        Controller { controller: controller }
+    }
+    
     pub fn create(&mut self) -> Result<&Group, i32> {
         let retval = unsafe { cgroup_create_cgroup(self.cgroup, 0) };
         match retval {
@@ -79,6 +83,14 @@ pub fn init() -> Result<(), i32> {
     }
 }
 
+#[allow(dead_code)]
+fn init_or_panic() {
+    match init() {
+        Err(i) => panic!("Failed to init with error code: {}", i),
+        _ => {},
+    }
+}
+
 #[test]
 fn test_init() {
     let i = init();
@@ -90,10 +102,7 @@ fn test_init() {
 
 #[test]
 fn test_get_cgroup() {
-    match init() {
-        Err(i) => panic!("Failed to init with error code: {}", i),
-        _ => {},
-    }
+    init_or_panic();
     
     let name = "foo";
     let mut new_group = Group::new(name);
@@ -116,4 +125,13 @@ fn test_get_cgroup() {
         },
         Err(i) => panic!("Failed to get the group with error code: {}", i),
     }
+}
+
+#[test]
+fn test_get_controller() {
+    init_or_panic();
+    let cgroup_name = "testgroup";
+    let mut group = Group::new(cgroup_name);
+    group.add_controller("cpuset");
+    group.get_controller("cpuset");
 }

@@ -4,30 +4,26 @@ use std::ffi::CString;
 use std::fmt;
 use std::os::raw::c_char;
 
-#[allow(non_camel_case_types)]
-#[repr(C)]
-struct extern_cgroup;
-
-#[allow(non_camel_case_types)]
-#[repr(C)]
-struct extern_cgroup_controller;
+// libcgroup pointers.
+enum CGroup {}
+enum CGroupController {}
 
 #[link(name = "cgroup")]
 extern "C" {
     fn cgroup_init() -> i32;
-    fn cgroup_new_cgroup(s: *const c_char) -> *mut extern_cgroup;
-    fn cgroup_add_controller(cgroup: *mut extern_cgroup, name: *const c_char) -> *mut extern_cgroup_controller;
-    fn cgroup_create_cgroup(cgroup: *mut extern_cgroup, ignore_ownership: i32) -> i32;
-    fn cgroup_get_cgroup(cgroup: *mut extern_cgroup) -> i32;
+    fn cgroup_new_cgroup(s: *const c_char) -> *mut CGroup;
+    fn cgroup_add_controller(cgroup: *mut CGroup, name: *const c_char) -> *mut CGroupController;
+    fn cgroup_create_cgroup(cgroup: *mut CGroup, ignore_ownership: i32) -> i32;
+    fn cgroup_get_cgroup(cgroup: *mut CGroup) -> i32;
 }
 
 pub struct Controller {
-    controller: *mut extern_cgroup_controller,
+    controller: *mut CGroupController,
 }
 
 pub struct Group<'a> {
     name: &'a str,
-    cgroup: *mut extern_cgroup,
+    cgroup: *mut CGroup,
 }
 
 impl<'a> fmt::Debug for Group<'a> {
@@ -46,7 +42,7 @@ impl<'a> Group<'a> {
     }
 
     pub fn get(name: &'a str) -> Result<Group<'a>, i32> {
-        let mut cgroup = Group::new(name);
+        let cgroup = Group::new(name);
         let retval = unsafe { cgroup_get_cgroup(cgroup.cgroup) };
         match retval {
             0 => {
@@ -75,7 +71,7 @@ impl<'a> Group<'a> {
     }
 }
 
-fn init() -> Result<(), i32> {
+pub fn init() -> Result<(), i32> {
     let retval = unsafe { cgroup_init() };
     match retval {
         0 => Ok(()),

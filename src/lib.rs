@@ -1,7 +1,6 @@
 extern crate libc;
 
 use std::ffi::CString;
-use std::fmt;
 use std::os::raw::c_char;
 
 // libcgroup pointers.
@@ -16,6 +15,8 @@ extern "C" {
     fn cgroup_get_controller(cgroup: *mut CGroup, name: *const c_char) -> *mut CGroupController;
     fn cgroup_create_cgroup(cgroup: *mut CGroup, ignore_ownership: i32) -> i32;
     fn cgroup_get_cgroup(cgroup: *mut CGroup) -> i32;
+    fn cgroup_free(cgroup: *mut *mut CGroup);
+    fn cgroup_free_controllers(cgroup: *mut *mut CGroup);
 }
 
 #[derive(Debug)]
@@ -71,6 +72,15 @@ impl<'a> Group<'a> {
         match retval {
             0 => Ok(self),
             _ => Err(retval),
+        }
+    }
+}
+
+impl<'a> Drop for Group<'a> {
+    fn drop (&mut self) {
+        unsafe {
+            // TODO - need to get a *mut *mut CGroup from the *mut CGroup
+            // cgroup_free(self.cgroup);
         }
     }
 }

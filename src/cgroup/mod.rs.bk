@@ -1,0 +1,79 @@
+/// Export the tools module
+pub mod tools;
+
+extern crate libc;
+
+use std::ffi::CString;
+use std::os::raw::c_char;
+
+#[link(name = "cgroup")]
+extern {
+    fn cgroup_init() -> i32;
+    fn cgroup_new_cgroup(s: *const c_char) -> libc::c_void;
+    fn cgroup_add_controller(cgroup: *mut libc::c_void, name: *const c_char) -> libc::c_void;
+    fn cgroup_create_cgroup(cgroup: *mut libc::c_void, ignore_ownership: i32) -> i32;
+    fn cgroup_get_cgroup(cgroup: *mut libc::c_void) -> i32;
+}
+
+pub struct Controller {
+    controller: libc::c_void,
+}
+
+pub struct Group<'a> {
+    name: &'a str,
+    cgroup: libc::c_void,
+}
+
+impl<'a> Group<'a> {
+    pub fn new(name: &'a str) -> Group<'a> {
+        let cgroup = unsafe {
+            cgroup_new_cgroup(CString::new(name).unwrap().into_raw())
+        };
+        Group{name: name, cgroup: cgroup}
+    }
+
+    pub fn get(name: &'a str) -> Result<Group<'a>, i32> {
+        let mut cgroup = Group::new(name);
+        let retval = unsafe {
+            cgroup_get_cgroup(&mut cgroup.cgroup)
+        };
+        match retval {
+            0 => Ok(Group{name: name, cgroup: cgroup.cgroup}),
+            _ => Err(retval),
+        }
+    }
+    
+    pub fn add_controller(&mut self, name: &'a str) -> Controller {
+        let controller = unsafe {
+            cgroup_add_controller(&mut self.cgroup, CString::new(name).unwrap().into_raw())
+        };
+        Controller{controller: controller}
+    }
+
+    pub fn create(&mut self) -> Result<&Group, i32> {
+        let retval = unsafe {
+            cgroup_create_cgroup(&mut self.cgroup, 0)
+        };
+        match retval {
+            0 => Ok(self),
+            _ => Err(retval),
+        }
+    }
+}
+
+fn init() -> i32 {
+    let retval = unsafe {
+        cgroup_init()
+    };
+    retval
+}
+
+
+
+
+#[test]
+fn aaait_works() {
+    unsafe {
+        cgroup_init();
+    }
+}

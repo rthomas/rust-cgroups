@@ -78,9 +78,11 @@ impl<'a> Group<'a> {
 
 impl<'a> Drop for Group<'a> {
     fn drop (&mut self) {
+//        println!("DROPPING: {:?}", self);
         unsafe {
-            // TODO - need to get a *mut *mut CGroup from the *mut CGroup
-            // cgroup_free(self.cgroup);
+            let cg = Box::into_raw(Box::new(self.cgroup));
+// TODO - there is a double-free being caused by this somewhere...
+//            cgroup_free(cg);
         }
     }
 }

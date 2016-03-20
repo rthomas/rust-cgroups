@@ -1,7 +1,8 @@
 [package]
-name = "cgroup"
+name = "cgroups"
 version = "0.1.0"
 authors = ["Ryan Thomas <ryan@ryant.org>"]
+license = "Apache-2.0"
 
 [dependencies]
 libc = "0.2.6"
